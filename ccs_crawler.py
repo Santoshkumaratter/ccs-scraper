@@ -97,18 +97,18 @@ class ProductContext:
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="CCS product collateral crawler")
-    parser.add_argument("--username", required=True, help="CCS login email")
-    parser.add_argument("--password", required=True, help="CCS login password")
-    parser.add_argument("--output-root", required=True, help="Directory where products are stored")
+    parser.add_argument("--username", default="Samir@MachineVisionDirect.com", help="CCS login email")
+    parser.add_argument("--password", default="MVDLogin1!", help="CCS login password")
+    parser.add_argument("--output-root", default="/Users/apple/Documents/Crwal/output_clean", help="Directory where products are stored")
     parser.add_argument("--series-url", action="append", help="Series URL to crawl (repeatable)")
-    parser.add_argument("--series-file", help="Text/CSV file containing series URLs (one per line)")
+    parser.add_argument("--series-file", default="series_urls.txt", help="Text/CSV file containing series URLs (one per line)")
     parser.add_argument("--product-file", help="CSV with explicit product URLs or model IDs")
     parser.add_argument("--max-products", type=int, default=0, help="Process only first N products")
     parser.add_argument("--overwrite", action="store_true", help="Re-download even if folder exists")
     parser.add_argument("--headless", action="store_true", help="Run Chrome headless")
     parser.add_argument("--chromedriver", help="Path to ChromeDriver binary")
-    parser.add_argument("--sleep", type=float, default=1.0, help="Base sleep between interactions")
-    parser.add_argument("--download-timeout", type=int, default=120, help="Seconds to wait for download")
+    parser.add_argument("--sleep", type=float, default=0.4, help="Base sleep between interactions")
+    parser.add_argument("--download-timeout", type=int, default=300, help="Seconds to wait for download")
     parser.add_argument("--clear-cache", action="store_true", help="Start with clean Chrome profile")
     parser.add_argument("--debug", action="store_true", help="Verbose Selenium logging")
     parser.add_argument("--keep-downloads", action="store_true", help="Do not delete temporary Chrome download folder")
@@ -298,9 +298,13 @@ class CCSCrawler:
             for product in tqdm(products, desc="Products", unit="product", leave=False):
                 if self.args.max_products and processed_count >= self.args.max_products:
                     return
-                if self.process_product(product):
-                    processed_count += 1
+                try:
+                    if self.process_product(product):
+                        processed_count += 1
                     self.processed_products.append(product)
+                except Exception as e:
+                    print(f"Error processing {product.code}: {e}")
+                    continue
 
     def process_product(self, context: ProductContext) -> bool:
         dest_dir = self.output_root / context.code
@@ -316,6 +320,10 @@ class CCSCrawler:
             self.driver.get(context.series_url)
             human_sleep(self.args.sleep)
             row = self.find_product_row(context.code)
+            if row is None:
+                print(f"Warning: Could not find product row for {context.code}, skipping...")
+                self.cleanup_dest_dir(dest_dir)
+                return False
             with contextlib.suppress(Exception):
                 self.download_product_image(context, dest_dir, row)
             with contextlib.suppress(Exception):
@@ -323,6 +331,10 @@ class CCSCrawler:
             self.driver.get(context.series_url)
             human_sleep(self.args.sleep)
             row = self.find_product_row(context.code)
+            if row is None:
+                print(f"Warning: Could not find product row for {context.code} on second attempt, skipping...")
+                self.cleanup_dest_dir(dest_dir)
+                return False
             self.clear_download_dir()
             downloads = self.collect_required_documents(context, row)
             self.transform_downloads(context, dest_dir, downloads)
@@ -337,6 +349,8 @@ class CCSCrawler:
             except Exception:
                 pass
         return True
+        self.cleanup_dest_dir(dest_dir)
+        return False
 
     def download_product_image(self, context: ProductContext, dest_dir: Path, row):
         img_el = row.find_element(By.CSS_SELECTOR, "div.model-thumbnail img")
@@ -374,6 +388,10 @@ class CCSCrawler:
                 path.unlink(missing_ok=True)
             else:
                 shutil.rmtree(path, ignore_errors=True)
+
+    def cleanup_dest_dir(self, dest_dir: Path):
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir, ignore_errors=True)
 
     def clear_download_cart(self):
         try:
@@ -415,7 +433,7 @@ class CCSCrawler:
                 continue
             if product_code in label:
                 return row
-        raise NoSuchElementException(f"Product row not found for {product_code}")
+        return None
 
     def add_documents_to_cart(self, context: ProductContext, row):
         # Click only the required cells by fuzzy-matching header labels.

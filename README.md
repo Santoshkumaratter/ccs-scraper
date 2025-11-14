@@ -31,26 +31,37 @@ pip install -r requirements.txt
 
 ## Usage
 
-The main entry point is `ccs_crawler.py`. Chrome opens in a normal (non-headless) window so you can watch the automation; add `--headless` if you prefer to keep it hidden.
+The main entry point is `ccs_crawler.py`. All required arguments are pre-configured, so you can simply run:
 
 ```bash
-python3 ccs_crawler.py \
-  --username "Samir@MachineVisionDirect.com" \
-  --password "MVDLogin1!" \
-  --output-root "/Users/apple/Documents/Crwal/output_clean" \
-  --series-file "series_urls.txt"
+python3 ccs_crawler.py
 ```
+
+Chrome will automatically open in a normal (non-headless) window so you can watch the automation. The script uses these default settings:
+- **Username**: `Samir@MachineVisionDirect.com`
+- **Password**: `MVDLogin1!`
+- **Output directory**: `/Users/apple/Documents/Crwal/output_clean`
+- **Series file**: `series_urls.txt`
+- **Sleep time**: `0.4` seconds
+- **Download timeout**: `300` seconds
 
 ### Optional Arguments
 
+You can override any default by passing arguments:
+
+- `--username`: Override login email (default: `Samir@MachineVisionDirect.com`)
+- `--password`: Override login password (default: `MVDLogin1!`)
+- `--output-root`: Override output directory (default: `/Users/apple/Documents/Crwal/output_clean`)
 - `--series-url`: Restrict crawling to a single series page (`https://www.ccs-grp.com/products/series/1`). Can be supplied multiple times.
-- `--series-file`: Path to a text/CSV file with series URLs (one per line).
-- `--product-file`: Optional CSV with explicit product URLs or model numbers (see the sample `products.txt`).
-- `--chromedriver`: Explicit path to ChromeDriver binary; otherwise `webdriver-manager` installs a matching build.
-- `--headless`: Hide the Chrome window (useful for servers).
-- `--max-products`: Stop after processing the specified number of products (useful for testing).
-- `--overwrite`: Re-download even if a product directory already exists.
-- `--sleep`: Base wait (seconds) between interactions.
+- `--series-file`: Path to a text/CSV file with series URLs (default: `series_urls.txt`)
+- `--product-file`: Optional CSV with explicit product URLs or model numbers (see the sample `products.txt`)
+- `--chromedriver`: Explicit path to ChromeDriver binary; otherwise `webdriver-manager` installs a matching build
+- `--headless`: Hide the Chrome window (useful for servers)
+- `--max-products`: Stop after processing the specified number of products (useful for testing)
+- `--overwrite`: Re-download even if a product directory already exists
+- `--sleep`: Base wait (seconds) between interactions (default: `0.4`)
+- `--download-timeout`: Seconds to wait for download (default: `300`)
+- `--clear-cache`: Start with clean Chrome profile
 
 ### Sample configuration files
 
@@ -83,9 +94,10 @@ output_root/
 
 1. Ensure VPN/proxy settings allow access to the CCS website.
 2. Confirm the provided CCS credentials work manually once to avoid account lockouts.
-3. Run the crawler with a small `--max-products` first to verify ChromeDriver and download folders.
-4. Monitor the console logs; the script updates progress via `tqdm`.
-5. After completion spot-check a handful of output folders (PDFs should open, zipped DXF/STEP should contain the expected files).
+3. Simply run `python3 ccs_crawler.py` - Chrome window will open automatically.
+4. For testing, you can limit products: `python3 ccs_crawler.py --max-products 5`
+5. Monitor the console logs; the script updates progress via `tqdm`.
+6. After completion spot-check a handful of output folders (PDFs should open, zipped DXF/STEP should contain the expected files).
 
 ## Troubleshooting
 
